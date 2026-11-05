@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './views/Dashboard';
 import { Simulator } from './views/Simulator';
@@ -13,9 +13,35 @@ import { PlaceholderView } from './components/PlaceholderView';
 import { Notification, NotificationItem } from './components/ui/Notification';
 import { ViewState } from './types';
 import { Menu } from 'lucide-react';
+import { DemoBar } from './components/DemoBar';
+import { DEMO, isEmbedded } from './services/demo/demo';
+
+const VIEWS: ViewState[] = [
+  'dashboard', 'simulator', 'analysis', 'calculator', 'comparator',
+  'recommender', 'whatif', 'devices', 'alerts',
+];
+
+/** Vista inicial desde el hash (#/whatif) para poder enlazar a una sección. */
+function viewFromHash(): ViewState {
+  const v = window.location.hash.replace(/^#\/?/, '') as ViewState;
+  return VIEWS.includes(v) ? v : 'dashboard';
+}
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<ViewState>('dashboard');
+  const [currentView, setCurrentView] = useState<ViewState>(viewFromHash);
+
+  // Sincroniza la vista con el hash (enlaces directos y botón atrás del navegador).
+  useEffect(() => {
+    const onHash = () => setCurrentView(viewFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  useEffect(() => {
+    const hash = `#/${currentView}`;
+    if (window.location.hash === hash) return;
+    if (!window.location.hash) window.history.replaceState(null, '', hash);
+    else window.location.hash = hash;
+  }, [currentView]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notification, setNotification] = useState<NotificationItem | null>(null);
 
@@ -64,6 +90,8 @@ const App: React.FC = () => {
           <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]"></div>
           <div className="absolute bottom-[10%] right-[5%] w-[30%] h-[30%] rounded-full bg-blue-500/5 blur-[100px]"></div>
       </div>
+
+      {DEMO && !isEmbedded() && <DemoBar />}
 
       {/* Notifications */}
       <Notification notification={notification} onClose={() => setNotification(null)} />

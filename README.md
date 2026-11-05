@@ -128,6 +128,22 @@ Para apuntar el frontend a otro backend, copia `.env.example` a `.env.local` y d
 | `POST` | `/api/recommend/best-hours` | Horas pico de generación |
 | `GET` | `/api/models/comparison` | Métricas de todos los modelos |
 
+## 🎬 Modo demo (rama `demo`)
+
+Esta rama genera un **build estático sin backend** para el portafolio:
+
+```bash
+npm run build:demo        # → dist-demo/ (rutas relativas, se puede servir en cualquier subcarpeta)
+```
+
+- `services/api.ts` no hace peticiones de red: responde con `services/demo/demoApi.ts`.
+- **Generación y costo** salen del modelo real: `ml/export_demo_predictions.py` consulta los modelos entrenados sobre una cuadrícula ciudad × estación × hora × nubosidad y guarda `services/demo/predictions.json`, sobre el que la demo interpola.
+- **Riesgo y tarifa óptima** son datos simulados que muestran el comportamiento esperado: el clasificador de riesgo actual etiqueta "bajo rendimiento" casi solo de noche, así que de día siempre responde "bajo".
+- `vite.config.ts` aborta si `VITE_DEMO_MODE` se usa fuera de `--mode demo` o si el build demo define `VITE_API_URL`.
+- Cada vista tiene su enlace directo por hash: `#/whatif`, `#/calculator`, `#/analysis`…
+
+Para regenerar las predicciones después de reentrenar: `cd ml && python train_models.py && python export_demo_predictions.py`.
+
 ## ⚠️ Limitaciones conocidas
 
 - El dataset es **sintético** (1,500 registros) y no contiene mediciones reales de instalaciones.

@@ -8,13 +8,22 @@
  * Las funciones marcadas "con fallback" usan estimaciones locales
  * (services/localModel.ts) si la API no responde, e indican la fuente
  * del resultado en el campo `fuente`.
+ *
+ * En el modo demo (services/demo/demo.ts) no se hace ninguna petición de red:
+ * todas las funciones responden con services/demo/demoApi.ts.
  */
 import {
   localPredictGeneration, localPredictCost, localAssessRisk, localRecommendPanels,
 } from './localModel';
+import { DEMO } from './demo/demo';
+import {
+  demoHealth, demoPredictGeneration, demoPredictCost, demoAssessRisk,
+  demoRecommendPanels, demoRecommendOptimalTariff,
+} from './demo/demoApi';
 
-const API_BASE: string =
-  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8000' : '');
+const API_BASE: string = DEMO
+  ? ''
+  : import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
 const TIMEOUT_MS = 5000;
 
@@ -25,6 +34,7 @@ export type WithFuente<T> = T & { fuente: Fuente };
 export const API_CONFIGURED = API_BASE !== '';
 
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
+  if (DEMO) throw new Error('Modo demo: sin backend');
   if (!API_CONFIGURED) throw new Error('API ML no configurada (VITE_API_URL)');
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -47,6 +57,7 @@ export interface HealthResponse {
 }
 
 export async function checkHealth(): Promise<HealthResponse> {
+  if (DEMO) return demoHealth();
   return fetchAPI('/api/health');
 }
 
@@ -85,6 +96,7 @@ export interface GenerationResponse {
 
 /** Con fallback: si la API no responde usa la estimación local. */
 export async function predictGeneration(data: GenerationRequest): Promise<WithFuente<GenerationResponse>> {
+  if (DEMO) return { ...(await demoPredictGeneration(data)), fuente: 'ml' };
   try {
     const res = await fetchAPI<GenerationResponse>('/api/predict/generation', {
     method: 'POST',
@@ -111,6 +123,7 @@ export interface CostResponse {
 
 /** Con fallback: si la API no responde usa la estimación local. */
 export async function predictCost(data: CostRequest): Promise<WithFuente<CostResponse>> {
+  if (DEMO) return { ...(await demoPredictCost(data)), fuente: 'ml' };
   try {
     const res = await fetchAPI<CostResponse>('/api/predict/cost', {
     method: 'POST',
@@ -168,6 +181,7 @@ export interface PanelRecommendResponse {
 
 /** Con fallback: si la API no responde usa la estimación local. */
 export async function recommendPanels(data: PanelRecommendRequest): Promise<WithFuente<PanelRecommendResponse>> {
+  if (DEMO) return { ...(await demoRecommendPanels(data)), fuente: 'ml' };
   try {
     const res = await fetchAPI<PanelRecommendResponse>('/api/recommend/panels', {
     method: 'POST',
@@ -214,6 +228,7 @@ export interface OptimalTariffResponse {
 }
 
 export async function recommendOptimalTariff(data: OptimalTariffRequest): Promise<OptimalTariffResponse> {
+  if (DEMO) return demoRecommendOptimalTariff(data);
   return fetchAPI('/api/recommend/optimal-tariff', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -243,6 +258,7 @@ export interface RiskResponse {
 
 /** Con fallback: si la API no responde usa la estimación local. */
 export async function assessRisk(data: RiskRequest): Promise<WithFuente<RiskResponse>> {
+  if (DEMO) return { ...(await demoAssessRisk(data)), fuente: 'ml' };
   try {
     const res = await fetchAPI<RiskResponse>('/api/risk/low-performance', {
     method: 'POST',
